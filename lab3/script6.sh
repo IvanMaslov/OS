@@ -29,4 +29,5 @@ do
 	result="$result $delimetr $line"	
 done <<< $fl
 
+result="$result $delimetr AVERAGE_SLEEPING_CHILDREN_OF_PARENT_ID=$n IS $(bc <<< 'scale=2;'$AVGsum/$AVGcnt )"	
 echo "$result"

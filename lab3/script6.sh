@@ -10,17 +10,20 @@ while read -r line
 do
 	ppid=$(awk '{print $5}' <<< $line)
 	time=$(awk '{print $8}' <<< $line)
-	echo $ppid" "$time
+	if [[ $time == "" ]];
+	then 
+		continue;
+	fi;
+	# echo $ppid $time
 	if [[ $ppid == $n ]];
 	then
 		AVGsum=$(( $AVGsum+$time ))
 		AVGcnt=$(( $AVGcnt+1 ));
-	else
-		# result="$result $delimetr AVERAGE_SLEEPING_CHILDREN_OF_PARENT_ID=$n IS $(( $AVGsum/$AVGcnt ))"	
+	else	
 		result="$result $delimetr AVERAGE_SLEEPING_CHILDREN_OF_PARENT_ID=$n IS $(bc <<< 'scale=2;'$AVGsum/$AVGcnt )"	
 		n=$ppid
 		AVGsum=$time
-		AVGcnt=1;
+		AVGcnt="1";
 	fi;
 
 	result="$result $delimetr $line"	

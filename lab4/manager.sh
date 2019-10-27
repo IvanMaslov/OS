@@ -14,7 +14,9 @@ function _help {
 }
 
 function _start_line {
-	echo "$(cat /proc/$1/cmdline)"
+	cmdline_="$(cat /proc/$1/cmdline)"
+	comm_="$(cat /proc/$1/comm)"
+	[[ -z "$cmdline_" ]] && echo "[$comm_]" || echo "$cmdline_";
 }
 
 function _short_start_line {
@@ -30,13 +32,14 @@ function _list {
 
 function _info {
 	pid=$1
-	echo -e "\e[34mPID: $pid"
+	echo -e "\e[34mPID		: $pid"
 	ppid=$(cat /proc/$pid/status | grep "PPid" | tr -s "\t" | awk '{print $2}')
-	echo -e "PPID: $ppid"
-	echo -e "PPID_CMDLINE : $(_short_start_line $ppid)"
-	echo -e "PATH_TO_EXE : $(readlink /proc/$pid/exe)"
-	echo -e "PATH_TO_CWD : $(readlink /proc/$pid/cwd)"
-	echo -e "USED_MEMORY : $(grep -o '[0-9]\+' /proc/$pid/statm | head -n1)\e[0m"
+	echo -e "PPID		: $ppid"
+	echo -e "PPID_CMDLINK	: $(_short_start_line $ppid)"
+	echo -e "PATH_TO_EXE	: $(readlink /proc/$pid/exe)"
+	echo -e "PATH_TO_CWD	: $(readlink /proc/$pid/cwd)"
+	echo -e "USER		: $(id -un $(cat /proc/$pid/uid_map | tr -s " " | cut -d" " -f2))"
+	echo -e "USED_MEMORY	: $(grep -o '[0-9]\+' /proc/$pid/statm | head -n1)\e[0m"
 }
 
 function _find {
@@ -55,23 +58,17 @@ function _send {
 }
 
 function _stream {
-	trap 'return' SIGINT;
+	trap 'echo ""; return' SIGINT;
 	pid_list="$(ls /proc | grep '^[0-9]*$' | sort -n | cat)"
 	while true; do
 		new_pid_list="$(ls /proc | grep '^[0-9]*$' | sort -n | cat)"
 		for i in $new_pid_list
 		do
-			if [[ $pid_list != *"$i"* ]]
-			then
-				echo -e "\e[32mprocess $i ($(_short_start_line $i)) started\e[0m"
-			fi;
+			[[ $pid_list != *"$i"* ]] && echo -e "\e[32mprocess $i ($(_short_start_line $i)) started\e[0m";
 		done
 		for i in $pid_list
 		do
-			if [[ $new_pid_list != *"$i"* ]]
-			then
-				echo -e "\e[31mprocess $i finished\e[0m"
-			fi;
+			[[ $new_pid_list != *"$i"* ]] && echo -e "\e[31mprocess $i finished\e[0m"
 		done
 		pid_list="$new_pid_list"
 		sleep 2;

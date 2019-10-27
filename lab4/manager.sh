@@ -10,34 +10,72 @@ help_message="Select action:
 	exit	 		= exit";
 
 function _help {
-	echo "$help_message";
+	echo -e "\e[31m$help_message\e[0m";
 }
 
 function _start_line {
-	echo "$(head -c50 /proc/$1/cmdline)"
+	echo "$(cat /proc/$1/cmdline)"
+}
+
+function _short_start_line {
+	echo "$(head -c50 <<< "$(_start_line $1)")"
 }
 
 function _list {
 	for i in $(ls /proc | grep '^[0-9]*$' | sort -n)
        	do
-		echo "PID = $i : CMDLINE = $(_start_line $i)"
+		echo -e "\e[32mPID = $i : CMDLINE = $(_short_start_line $i)\e[0m"
 	done
 }
 
 function _info {
 	pid=$1
-	echo "PID: $pid"
+	echo -e "\e[34mPID: $pid"
 	ppid=$(cat /proc/$pid/status | grep "PPid" | tr -s "\t" | awk '{print $2}')
-	echo "PPID: $ppid"
-	echo "PPID_CMDLINE : $(_start_line $ppid)"
-	echo "PATH_TO_EXE : $(readlink /proc/$pid/exe)"
-	echo "PATH_TO_CWD : $(readlink /proc/$pid/cwd)"
-	echo "USED_MEMORY : $(grep -o '[0-9]\+' /proc/$pid/statm | head -n1)"
+	echo -e "PPID: $ppid"
+	echo -e "PPID_CMDLINE : $(_short_start_line $ppid)"
+	echo -e "PATH_TO_EXE : $(readlink /proc/$pid/exe)"
+	echo -e "PATH_TO_CWD : $(readlink /proc/$pid/cwd)"
+	echo -e "USED_MEMORY : $(grep -o '[0-9]\+' /proc/$pid/statm | head -n1)\e[0m"
 }
 
 function _find {
 	query=$1
-	echo "$(grep "$query" <<< "$(_list)" | cut -d: -f1)"
+	for i in $(ls /proc | grep '^[0-9]*$' | sort -n)
+	do
+		if [[ "$(_start_line $i)" =~ "$query" ]]
+		then
+			echo -e "\e[36mPID : $i\e[0m"
+		fi;
+	done
+}
+
+function _send {
+	kill $1 $2
+}
+
+function _stream {
+	trap 'return' SIGINT;
+	pid_list="$(ls /proc | grep '^[0-9]*$' | sort -n | cat)"
+	while true; do
+		new_pid_list="$(ls /proc | grep '^[0-9]*$' | sort -n | cat)"
+		for i in $new_pid_list
+		do
+			if [[ $pid_list != *"$i"* ]]
+			then
+				echo -e "\e[32mprocess $i ($(_short_start_line $i)) started\e[0m"
+			fi;
+		done
+		for i in $pid_list
+		do
+			if [[ $new_pid_list != *"$i"* ]]
+			then
+				echo -e "\e[31mprocess $i finished\e[0m"
+			fi;
+		done
+		pid_list="$new_pid_list"
+		sleep 2;
+	done
 }
 
 function _manage {
@@ -49,7 +87,6 @@ function _manage {
 		arg2=$(cut -d" " -f3 <<< $in_str)
 		# echo "$a_case : $arg1 : $arg2;"
 		case $a_case in
-			'd' ) _develop ;;
 			'list' ) _list ;;
 			'info' ) _info $arg1;;
 			'find' ) _find $arg1;;

@@ -23,8 +23,15 @@ function _short_start_line {
 	echo "$(head -c50 <<< "$(_start_line $1)")"
 }
 
-function _list {
+function _pids {
 	for i in $(ls /proc | grep '^[0-9]*$' | sort -n)
+	do
+		[[ "$(_start_line $i)" != "[]" ]] && echo "$i"
+	done
+}
+
+function _list {
+	for i in $(_pids)
        	do
 		echo -e "\e[32mPID = $i : CMDLINE = $(_short_start_line $i)\e[0m"
 	done
@@ -44,7 +51,7 @@ function _info {
 
 function _find {
 	query=$1
-	for i in $(ls /proc | grep '^[0-9]*$' | sort -n)
+	for i in $(_pids)
 	do
 		if [[ "$(_start_line $i)" =~ "$query" ]]
 		then
@@ -59,9 +66,9 @@ function _send {
 
 function _stream {
 	trap 'echo ""; return' SIGINT;
-	pid_list="$(ls /proc | grep '^[0-9]*$' | sort -n | cat)"
+	pid_list=$(_pids)
 	while true; do
-		new_pid_list="$(ls /proc | grep '^[0-9]*$' | sort -n | cat)"
+		new_pid_list=$(_pids)
 		for i in $new_pid_list
 		do
 			[[ $pid_list != *"$i"* ]] && echo -e "\e[32mprocess $i ($(_short_start_line $i)) started\e[0m";

@@ -1,13 +1,14 @@
 #!/bin/bash
 
 help_message="Select action:
-	list			= list of process in format \"PID : COMMAND\"
-	info <PID>		= information of process
-	find <QUERY>		= PID_list which started with <QUERY> command
-	send <SIGNAL> <PID> 	= send to process <PID> signal <SIGNAL>
-	stream			= start STREAM mode. to cancel it use Ctrl+C
-	help 			= help
-	exit	 		= exit";
+	list				= list of process in format \"PID : COMMAND\"
+	info <PID>			= information of process
+	find <QUERY>			= PID_list which started with <QUERY> command
+	send <SIGNAL> <PID> 		= send to process <PID> signal <SIGNAL>
+	sendall <SIGNAL> <QUERY> 	= send to all process with command <QUERY> signal <SIGNAL>
+	stream				= start STREAM mode. to cancel it use Ctrl+C
+	help 				= help
+	exit	 			= exit";
 
 function _help {
 	echo -e "\e[31m$help_message\e[0m";
@@ -57,6 +58,17 @@ function _send {
 	kill $1 $2
 }
 
+function _sendall {
+	query=$2
+	for i in $(ls /proc | grep '^[0-9]*$' | sort -n)
+	do
+		if [[ "$(_start_line $i)" =~ "$query" ]]
+		then
+			kill $1 $i
+		fi;
+	done
+}
+
 function _stream {
 	trap 'echo ""; return' SIGINT;
 	pid_list="$(ls /proc | grep '^[0-9]*$' | sort -n | cat)"
@@ -88,6 +100,7 @@ function _manage {
 			'info' ) _info $arg1;;
 			'find' ) _find $arg1;;
 			'send' ) _send $arg1 $arg2;;
+			'sendall' ) _sendall $arg1 $arg2;;
 			'stream' ) _stream ;;
 			'help' ) _help ;;
 			'exit' ) exit ;;
